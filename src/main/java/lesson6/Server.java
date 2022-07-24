@@ -1,0 +1,79 @@
+package lesson6;
+
+/*
+Java. Уровень 2. Урок 6.
+"Работа с сетью. Сокеты. Написание эхо-сервера и консольного клиента".
+
+Написать консольный вариант клиент\серверного приложения, в котором пользователь может писать сообщения, как на клиентской стороне, так и на серверной.
+
+Т.е., если на клиентской стороне написать "Привет", нажать Enter, то сообщение должно передаться на сервер и там отпечататься в консоли.
+
+Если сделать тоже самое на серверной стороне, сообщение соответственно передаётся клиенту и печатается у него в консоли.
+
+Есть одна особенность, которую нужно учитывать: клиент или сервер может написать несколько сообщений подряд, такую ситуацию необходимо корректно обработать.
+
+Разобраться с кодом с занятия, он является фундаментом проекта-чата.
+
+ВАЖНО!
+Сервер общается только с одним клиентом, т.е. не нужно запускать цикл, который будет ожидать второго/третьего/n-го клиентов.
+*/
+
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.util.Scanner;
+
+public class Server {
+    private static final int SERVER_PORT = 8186;
+    private static DataInputStream in;
+    private static DataOutputStream out;
+    private static Socket clientSocket;
+
+    public static void main(String[] args) {
+
+        try (ServerSocket serverSocket = new ServerSocket(SERVER_PORT)) {
+            while (true) {
+                System.out.println("Waiting for connection...");
+                clientSocket = serverSocket.accept();
+                System.out.println("Connection established!");
+
+                in = new DataInputStream(clientSocket.getInputStream());
+                out = new DataOutputStream(clientSocket.getOutputStream());
+
+                try {
+                    new Thread(() -> {
+                        while (true) {
+                            try {
+                                String message = in.readUTF();
+                                System.out.println("Client: " + message);
+                            } catch (IOException e) {
+                                throw new RuntimeException(e);
+                            }
+                        }
+                    }).start();
+
+                    Scanner scanner = new Scanner(System.in);
+                    while (true) {
+                        String message = scanner.nextLine();
+                        if (!message.equals("")) {
+                            out.writeUTF(message);
+                        }
+                    }
+
+                } catch (IOException e) {
+                    e.printStackTrace();
+                } finally {
+                    try {
+                        clientSocket.close();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+}
